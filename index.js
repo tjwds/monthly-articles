@@ -1,7 +1,16 @@
 const cheerio = require("cheerio");
 
+const now = new Date();
+
 const toUl = (textArray) =>
   `<ul>${textArray.map((text) => `<li>${text}</li>`).join("\n")}</ul>`;
+
+function daysInMonth(date) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+
+  return new Date(year, month, 0).getDate();
+}
 
 const fetchers = [
   {
@@ -52,7 +61,6 @@ const fetchers = [
   {
     url: "https://www.goodreads.com/review/list/10363050-joe?shelf=read",
     transformer($) {
-      const now = new Date();
       const rows = Array.from($(".review")).filter((row) => {
         const rowElement = $(row);
         const children = rowElement.find(".date_added span");
@@ -90,8 +98,6 @@ const fetchers = [
   {
     url: "https://www.failbetter.com",
     transformer($) {
-      const now = new Date();
-
       const rows = Array.from($(".node-teaser")).filter((row) => {
         const rowElement = $(row);
         const children = rowElement.find(".submitted");
@@ -127,7 +133,34 @@ const fetchers = [
       );
     },
   },
-  // TODO whatpulse
+  {
+    jsonUrl: `https://whatpulse.org/ajax/json/user/pulse/list/132366?view=custom&computerid=1408253&datefrom=${now.getFullYear()}-${(
+      now.getMonth() + 1
+    )
+      .toString()
+      .padStart(2, "0")}-01&dateto=${now.getFullYear()}-${(now.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}-${daysInMonth(
+      now
+    )}&pulses_groupby=month&pulses_filterby=allcomputers&_=1703174744205`,
+    transformer(data) {
+      const numbers = data.data.reduce(
+        (previous, wpObject) => {
+          previous.clicks = previous.clicks + Number(wpObject.clicks.sort);
+          previous.keys = previous.keys + Number(wpObject.keys.sort);
+
+          return previous;
+        },
+        {
+          clicks: 0,
+          keys: 0,
+        }
+      );
+
+      return `## stats \n\nThis month:\n\n* I typed ${numbers.keys} keys and clicked ${numbers.clicks} times.`;
+    },
+  },
+  // TODO last.fm
 ];
 
 async function fetchData(url) {
@@ -142,14 +175,17 @@ function parseHTML(html) {
 
 async function main() {
   const results = await Promise.all(
-    fetchers.map(async ({ url, transformer }) => {
-      try {
-        const html = await fetchData(url);
+    fetchers.map(async ({ url, transformer, jsonUrl }) => {
+      if (jsonUrl) {
+        const res = await fetch(jsonUrl);
+        const json = await res.json();
 
-        return transformer(parseHTML(html));
-      } catch (error) {
-        console.error("Error fetching or parsing the HTML:", error);
+        return transformer(json);
       }
+
+      const html = await fetchData(url);
+
+      return transformer(parseHTML(html));
     })
   );
 

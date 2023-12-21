@@ -87,7 +87,46 @@ const fetchers = [
       );
     },
   },
-  // TODO failbetter
+  {
+    url: "https://www.failbetter.com",
+    transformer($) {
+      const now = new Date();
+
+      const rows = Array.from($(".node-teaser")).filter((row) => {
+        const rowElement = $(row);
+        const children = rowElement.find(".submitted");
+
+        const then = new Date(children.text().trim().slice(13));
+
+        return (
+          then.getFullYear() === now.getFullYear() &&
+          then.getMonth() === now.getMonth()
+        );
+      });
+
+      const rowsFormatted = rows.map((element) => {
+        const $el = $(element);
+        const $link = $el.find("h2 a");
+        let row = `<a href="https://failbetter.com${
+          $link[0].attribs.href
+        }">"${$link.text().trim()}"</a> by ${$el
+          .find(".field-name-field-author")
+          .text()
+          .trim()}`;
+
+        return row;
+      });
+
+      if (!rowsFormatted.length) {
+        return "No publications from _failbetter_ this month.";
+      }
+      return (
+        "## _failbetter_\n\n" +
+        `This month, _failbetter_ published:\n\n` +
+        toUl(rowsFormatted)
+      );
+    },
+  },
   // TODO whatpulse
 ];
 

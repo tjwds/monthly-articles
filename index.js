@@ -49,6 +49,46 @@ const fetchers = [
       );
     },
   },
+  {
+    url: "https://www.goodreads.com/review/list/10363050-joe?shelf=read",
+    transformer($) {
+      const now = new Date();
+      const rows = Array.from($(".review")).filter((row) => {
+        const rowElement = $(row);
+        const children = rowElement.find(".date_added span");
+        const then = new Date(children.text().trim());
+
+        return (
+          then.getFullYear() === now.getFullYear() &&
+          then.getMonth() === now.getMonth()
+        );
+      });
+
+      const rowsFormatted = rows.map((element) => {
+        const $el = $(element);
+        let row = `<i>${$el.find(".title .value a").text().trim()}</i> by ${$el
+          .find(".author .value a")
+          .text()
+          .trim()} — TODO ${$el.find(".rating .value").text().trim()}`;
+
+        return row;
+      });
+
+      if (!rowsFormatted.length) {
+        return "I didn't finish any books this month!";
+      }
+      return (
+        "## books\n\n" +
+        `This month, I finished ${rowsFormatted.length} book${
+          rowsFormatted.length === 1 ? "" : "s"
+        }:\n\n` +
+        toUl(rowsFormatted) +
+        "\n\n TODO mention any books I'm currently reading"
+      );
+    },
+  },
+  // TODO failbetter
+  // TODO whatpulse
 ];
 
 async function fetchData(url) {
@@ -67,7 +107,7 @@ async function main() {
       try {
         const html = await fetchData(url);
 
-        return await transformer(parseHTML(html));
+        return transformer(parseHTML(html));
       } catch (error) {
         console.error("Error fetching or parsing the HTML:", error);
       }

@@ -3,7 +3,7 @@ const cheerio = require("cheerio");
 const now = new Date();
 
 const toUl = (textArray) =>
-  `<ul>${textArray.map((text) => `<li>${text}</li>`).join("\n")}</ul>`;
+  `${textArray.map((text) => `* ${text}`).join("\n")}`;
 
 function daysInMonth(date) {
   const year = date.getFullYear();

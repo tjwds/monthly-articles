@@ -39,9 +39,13 @@ const fetchers = [
           ($el.find(".td-rewatch.icon-status-off").length
             ? ""
             : " (rewatch) ") +
-          ($el.find(".td-rating").text().trim().slice(1).trim() ||
-            "(no rating)");
-
+          ($el
+            .find(".td-rating")
+            .text()
+            .trim()
+            .slice(1)
+            .trim()
+            .padEnd(5, "☆") || "(no rating)");
         return row;
       });
 

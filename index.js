@@ -1,4 +1,7 @@
 const cheerio = require("cheerio");
+const { XMLParser } = require("fast-xml-parser");
+
+const parser = new XMLParser();
 
 const now = new Date();
 
@@ -12,7 +15,46 @@ function daysInMonth(date) {
   return new Date(year, month, 0).getDate();
 }
 
+const currentDate = new Date();
+const currentMonth = currentDate.getMonth() + 1;
+const currentYear = currentDate.getFullYear();
+
 const fetchers = [
+  {
+    url: "https://leadership.joewoods.dev/rss/",
+    async transformer() {
+      try {
+        const response = await fetch("https://leadership.joewoods.dev/rss/");
+        const xmlData = await response.text();
+        const parsedData = parser.parse(xmlData);
+
+        const items = parsedData.rss.channel.item;
+
+        const filteredItems = Array.isArray(items)
+          ? items.filter((item) => {
+              const pubDate = new Date(item.pubDate);
+              return (
+                pubDate.getMonth() + 1 === currentMonth &&
+                pubDate.getFullYear() === currentYear
+              );
+            })
+          : [];
+
+        const formattedData = filteredItems.map((item) => {
+          return `* [${item.title}](${item.link})`;
+        });
+
+        if (!formattedData.length) {
+          return `! No leadership posts for this month!`;
+        }
+
+        return "## writing\n\n" + formattedData.join("\n");
+      } catch (error) {
+        console.error("Error fetching or parsing RSS feed:", error);
+        return "There was an error fetching or parsing the RSS feed.";
+      }
+    },
+  },
   {
     url: "https://letterboxd.com/tjwds/films/diary/",
     transformer($) {
@@ -164,19 +206,19 @@ const fetchers = [
       return `## stats \n\nThis month:\n\n* I typed ${numbers.keys} keys and clicked ${numbers.clicks} times.`;
     },
   },
-  //   {
-  //     url: `https://www.last.fm/user/woodsjoe/library?from=${now.getFullYear()}-${(
-  //       now.getMonth() + 1
-  //     )
-  //       .toString()
-  //       .padStart(2, "0")}-01-01&rangetype=1month`,
-  //     transformer($) {
-  //       console.log($(".metadata-display"));
-  //       return `* I listened to ${$(
-  //         ".metadata-display"
-  //       )[0].innerText.trim()} songs.`;
-  //     },
+  // {
+  //   url: `https://www.last.fm/user/woodsjoe/library?from=${now.getFullYear()}-${(
+  //     now.getMonth() + 1
+  //   )
+  //     .toString()
+  //     .padStart(2, "0")}-01-01&rangetype=1month`,
+  //   transformer($) {
+  //     console.log($(".metadata-display"));
+  //     return `* I listened to ${$(
+  //       ".metadata-display"
+  //     )[0].innerText.trim()} songs.`;
   //   },
+  // },
 ];
 
 async function fetchData(url) {

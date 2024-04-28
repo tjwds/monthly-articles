@@ -40,7 +40,7 @@ const fetchers = [
             })
           : [];
 
-        const formattedData = filteredItems.map((item) => {
+        const formattedData = filteredItems.reverse().map((item) => {
           return `* [${item.title}](${item.link})`;
         });
 
@@ -118,7 +118,7 @@ const fetchers = [
         );
       });
 
-      const rowsFormatted = rows.map((element) => {
+      const rowsFormatted = rows.reverse().map((element) => {
         const $el = $(element);
         let row = `<i>${$el.find(".title .value a").text().trim()}</i> by ${$el
           .find(".author .value a")

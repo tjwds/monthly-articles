@@ -120,10 +120,22 @@ const fetchers = [
 
       const rowsFormatted = rows.reverse().map((element) => {
         const $el = $(element);
-        let row = `<i>${$el.find(".title .value a").text().trim()}</i> by ${$el
+        const author = $el
           .find(".author .value a")
           .text()
-          .trim()} — TODO ${$el.find(".rating .value").text().trim()}`;
+          .trim()
+          .split(", ")
+          .reverse()
+          .join(" ");
+
+        let row = `<i>${$el
+          .find(".title .value a")
+          .text()
+          .trim()
+          .replaceAll("\n", " ")}</i> by ${author} — TODO ${$el
+          .find(".rating .value")
+          .text()
+          .trim()}`;
 
         return row;
       });
@@ -255,7 +267,7 @@ async function main() {
         now.getMonth() + 1
       )
         .toString()
-        .padStart(2, "0")}-01-01&rangetype=1month`
+        .padStart(2, "0")}-01&rangetype=1month`
   );
 }
 

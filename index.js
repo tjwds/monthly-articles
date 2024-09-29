@@ -1,12 +1,29 @@
 const cheerio = require("cheerio");
 const { XMLParser } = require("fast-xml-parser");
 
+const config = require("./config.js");
+
 const parser = new XMLParser();
 
 const now = new Date();
+const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  .toISOString()
+  .split("T")[0];
 
 const toUl = (textArray) =>
   `${textArray.map((text) => `* ${text}`).join("\n")}`;
+
+const numOutOfFiveToStarCharacters = (num) => {
+  let string = "";
+  let floor = Math.floor(num);
+  string += "★".repeat(floor);
+
+  if (floor !== num) {
+    string += "½";
+  }
+
+  return string.padEnd(5, "☆");
+};
 
 function daysInMonth(date) {
   const year = date.getFullYear();
@@ -73,7 +90,7 @@ const fetchers = [
         return children[0]?.attribs["href"]?.includes(currentYearMonth);
       });
 
-      const rowsFormatted = rows.map((element) => {
+      const rowsFormatted = rows.reverse().map((element) => {
         const $el = $(element);
         let row =
           $el.find(".headline-3").text() +
@@ -105,40 +122,49 @@ const fetchers = [
     },
   },
   {
-    url: "https://www.goodreads.com/review/list/10363050-joe?shelf=read",
-    transformer($) {
-      const rows = Array.from($(".review")).filter((row) => {
-        const rowElement = $(row);
-        const children = rowElement.find(".date_added span");
-        const then = new Date(children.text().trim());
+    jsonUrl: "https://api.hardcover.app/v1/graphql",
+    headers: {
+      authorization: config.hardcoverAuthorization,
+    },
+    method: "POST",
+    body: JSON.stringify({
+      query: `query MyQuery {
+        user_book_reads(
+          where: {user_book: {user: {id: {_eq: 16056}}, status_id: {_eq: 3}}, finished_at: {_gte: "${firstDayOfMonth}"}}
+        ) {
+          user_book {
+            book {
+              title
+              contributions {
+                author {
+                  name
+                }
+              }
+            }
+            rating
+          }
+        }
+      }
+    `,
+    }),
+    transformer(result) {
+      const rowsFormatted = result.data.user_book_reads
+        .reverse()
+        .map((entry) => {
+          const authors = entry.user_book.book.contributions
+            .map((contrib) => contrib.author.name)
+            .join(", ");
 
-        return (
-          then.getFullYear() === now.getFullYear() &&
-          then.getMonth() === now.getMonth()
-        );
-      });
+          let row = `<i>${entry.user_book.book.title}</i> by ${authors}`;
 
-      const rowsFormatted = rows.reverse().map((element) => {
-        const $el = $(element);
-        const author = $el
-          .find(".author .value a")
-          .text()
-          .trim()
-          .split(", ")
-          .reverse()
-          .join(" ");
+          if (entry.user_book.rating !== null) {
+            row += ` — ${numOutOfFiveToStarCharacters(entry.user_book.rating)}`;
+          } else {
+            row += " — No rating";
+          }
 
-        let row = `<i>${$el
-          .find(".title .value a")
-          .text()
-          .trim()
-          .replaceAll("\n", " ")}</i> by ${author} — TODO ${$el
-          .find(".rating .value")
-          .text()
-          .trim()}`;
-
-        return row;
-      });
+          return row;
+        });
 
       if (!rowsFormatted.length) {
         return "I didn't finish any books this month!";
@@ -245,18 +271,24 @@ function parseHTML(html) {
 
 async function main() {
   const results = await Promise.all(
-    fetchers.map(async ({ url, transformer, jsonUrl }) => {
-      if (jsonUrl) {
-        const res = await fetch(jsonUrl);
-        const json = await res.json();
+    fetchers.map(
+      async ({ url, headers, transformer, jsonUrl, body, method }) => {
+        if (jsonUrl) {
+          const res = await fetch(jsonUrl, {
+            headers,
+            body,
+            method: method || "GET",
+          });
+          const json = await res.json();
 
-        return transformer(json);
+          return transformer(json);
+        }
+
+        const html = await fetchData(url);
+
+        return transformer(parseHTML(html));
       }
-
-      const html = await fetchData(url);
-
-      return transformer(parseHTML(html));
-    })
+    )
   );
 
   console.log(

@@ -241,7 +241,16 @@ const fetchers = [
         }
       );
 
-      return `## stats \n\nThis month:\n\n* I typed ${numbers.keys} keys and clicked ${numbers.clicks} times.`;
+      return (
+        `## stats \n\nThis month:\n\n* I typed ${numbers.keys} keys and clicked ${numbers.clicks} times.` +
+        // unfortunately, you have to be logged in to get this; I'm okay with
+        // just doing this manually, I suppose.
+        `\n* I listened to TODO songs. go look at https://www.last.fm/user/woodsjoe/library?from=${now.getFullYear()}-${(
+          now.getMonth() + 1
+        )
+          .toString()
+          .padStart(2, "0")}-01&rangetype=1month`
+      );
     },
   },
   // {
@@ -291,16 +300,7 @@ async function main() {
     )
   );
 
-  console.log(
-    results.join("\n\n") +
-      // unfortunately, you have to be logged in to get this; I'm okay with just
-      // doing this manually, I suppose.
-      `\n* I listened to TODO songs. go look at https://www.last.fm/user/woodsjoe/library?from=${now.getFullYear()}-${(
-        now.getMonth() + 1
-      )
-        .toString()
-        .padStart(2, "0")}-01&rangetype=1month`
-  );
+  console.log(results.join("\n\n"));
 }
 
 main();

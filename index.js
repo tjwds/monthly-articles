@@ -180,6 +180,13 @@ const fetchers = [
     },
   },
   {
+    textOnly: true,
+    transformer() {
+      // This one's super manual.
+      return `## food\n\nI'm on a quest to go to [every restaurant in Richmond that has vegan food.](https://every.restaurant).  This month, I visited TODO restaurants for the first time:\n\nTODO https://docs.google.com/spreadsheets/d/1qelxg12WPGnISmXsWBVnDf5JcAUmoCEdODGUd0UmmWw/edit?gid=716405202#gid=716405202`;
+    },
+  },
+  {
     url: "https://www.failbetter.com",
     transformer($) {
       const rows = Array.from($(".node-teaser")).filter((row) => {
@@ -281,7 +288,19 @@ function parseHTML(html) {
 async function main() {
   const results = await Promise.all(
     fetchers.map(
-      async ({ url, headers, transformer, jsonUrl, body, method }) => {
+      async ({
+        url,
+        headers,
+        transformer,
+        jsonUrl,
+        body,
+        method,
+        textOnly,
+      }) => {
+        if (textOnly) {
+          return transformer();
+        }
+
         if (jsonUrl) {
           const res = await fetch(jsonUrl, {
             headers,
